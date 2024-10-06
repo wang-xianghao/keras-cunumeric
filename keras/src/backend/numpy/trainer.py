@@ -7,6 +7,7 @@ from keras.src.backend.common import standardize_dtype
 from keras.src.backend.common.keras_tensor import KerasTensor
 from keras.src.backend.numpy.core import is_tensor
 from keras.src.trainers import trainer as base_trainer
+from keras.src.trainers.data_adapters import array_slicing
 from keras.src.trainers.data_adapters import data_adapter_utils
 from keras.src.trainers.epoch_iterator import EpochIterator
 from keras.src.utils import traceback_utils
@@ -43,6 +44,10 @@ class NumpyTrainer(base_trainer.Trainer):
         else:
             y_pred = self(x)
         return y_pred
+    
+    def make_train_function(self, force=False):
+        # TODO: to be implemented
+        pass
 
     def make_test_function(self, force=False):
         if self.test_function is not None and not force:
@@ -166,7 +171,66 @@ class NumpyTrainer(base_trainer.Trainer):
         validation_batch_size=None,
         validation_freq=1,
     ):
-        raise NotImplementedError("fit not implemented for NumPy backend.")
+        if not self.compiled:
+            raise ValueError(
+                "You must call `compile()` before calling `fit()`."
+            )
+            
+        # TODO: respect compiled trainable state
+        self._eval_epoch_iterator = None
+        if validation_split and validation_data is None:
+            # Create the validation data using the training data. Only supported
+            # for TF/numpy/jax arrays.
+            (
+                x,
+                y,
+                sample_weight,
+            ), validation_data = array_slicing.train_validation_split(
+                (x, y, sample_weight), validation_split=validation_split
+            )
+        
+        if validation_data is not None:
+            (
+                val_x,
+                val_y,
+                val_sample_weight,
+            ) = data_adapter_utils.unpack_x_y_sample_weight(validation_data)
+
+        # TODO: add epoch iterator
+        epoch_iterator = None
+        self._symbolic_build(iterator=epoch_iterator)
+        
+        # Container that configures and calls callbacks.
+        if not isinstance(callbacks, callbacks_module.CallbackList):
+            callbacks = callbacks_module.CallbackList(
+                callbacks,
+                add_history=True,
+                add_progbar=verbose != 0,
+                verbose=verbose,
+                epochs=epochs,
+                steps=epoch_iterator.num_batches,
+                model=self,
+            )
+            
+        self.stop_training = False
+        callbacks.on_train_begin()
+        
+        initial_epoch = self._initial_epoch or initial_epoch
+        for epoch in range(initial_epoch, epochs):
+            # TODO: implement each epoch's training
+            pass
+        
+        if (
+            isinstance(self.optimizer, optimizers_module.Optimizer)
+            and epochs > 0
+        ):
+            self.optimizer.finalize_variable_values(self.trainable_weights)
+    
+        # If _eval_epoch_iterator exists, delete it after all epochs are done.
+        if getattr(self, "_eval_epoch_iterator", None) is not None:
+            del self._eval_epoch_iterator
+        callbacks.on_train_end(logs=training_logs)
+        return self.history
 
     @traceback_utils.filter_traceback
     def predict(
