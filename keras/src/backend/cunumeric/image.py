@@ -1,5 +1,5 @@
 import jax
-import numpy as np
+import cunumeric as np
 
 from keras.src import backend
 from keras.src.backend.cunumeric.core import convert_to_tensor

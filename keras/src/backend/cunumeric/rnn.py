@@ -1,4 +1,4 @@
-import numpy as np
+import cunumeric as np
 
 from keras.src import tree
 

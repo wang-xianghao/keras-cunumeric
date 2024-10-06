@@ -1,5 +1,5 @@
 import jax
-import numpy as np
+import cunumeric as np
 from jax import lax
 
 from keras.src import backend

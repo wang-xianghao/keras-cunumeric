@@ -2,7 +2,7 @@ import builtins
 import functools
 import warnings
 
-import numpy as np
+import cunumeric as np
 
 from keras.src import tree
 from keras.src.backend.common import KerasVariable
